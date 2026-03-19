@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "salesforce-org-mcp"
+dynamic = ["version"]
+description = "MCP server para pipelines de orgs Salesforce"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+  "mcp~=1.8.0",
+  "simple-salesforce>=1.12.0",
+  "httpx>=0.27.0",
+  "uvicorn",
+  "starlette",
+]
+
+[tool.hatch.version]
+path = "src/salesforce_org_mcp/__about__.py"
+
+[project.scripts]
+salesforce-org-mcp = "salesforce_org_mcp.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/salesforce_org_mcp"]

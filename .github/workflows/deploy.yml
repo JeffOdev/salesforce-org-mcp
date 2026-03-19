@@ -1,0 +1,66 @@
+name: Salesforce Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      org_alias:
+        description: "Org alvo (production ou sandbox)"
+        required: true
+        default: "sandbox"
+      source_path:
+        description: "Caminho do componente"
+        required: true
+        default: "force-app/main/default"
+      check_only:
+        description: "Apenas validar sem deployar? (true/false)"
+        required: true
+        default: "false"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Instalar Salesforce CLI
+        run: npm install -g @salesforce/cli
+
+      - name: Autenticar na org Salesforce
+        run: |
+          if [ "${{ inputs.org_alias }}" = "production" ]; then
+            SF_URL="${{ secrets.SF_SFDX_URL_PRODUCTION }}"
+          else
+            SF_URL="${{ secrets.SF_SFDX_URL_SANDBOX }}"
+          fi
+          echo "$SF_URL" > /tmp/sfdx_url.txt
+          sf org login sfdx-url \
+            --sfdx-url-file /tmp/sfdx_url.txt \
+            --alias ${{ inputs.org_alias }}
+
+      - name: Validar antes do deploy (check-only)
+        if: ${{ inputs.check_only == 'true' }}
+        run: |
+          sf project deploy validate \
+            --source-dir ${{ inputs.source_path }} \
+            --target-org ${{ inputs.org_alias }} \
+            --json
+
+      - name: Fazer deploy real
+        if: ${{ inputs.check_only == 'false' }}
+        run: |
+          sf project deploy start \
+            --source-dir ${{ inputs.source_path }} \
+            --target-org ${{ inputs.org_alias }} \
+            --json
+
+      - name: Executar testes Apex
+        if: ${{ inputs.check_only == 'false' }}
+        run: |
+          sf apex run test \
+            --target-org ${{ inputs.org_alias }} \
+            --result-format human \
+            --wait 10
